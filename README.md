@@ -2,6 +2,12 @@
 
 A minimal Astro landing page for testing deployments.
 
+## Tech Stack
+
+- **Framework**: [Astro](https://astro.build) v5.14.7
+- **Runtime**: [Bun](https://bun.sh)
+- **Deployment**: Docker
+
 ## Development
 
 ```bash
