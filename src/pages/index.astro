@@ -5,7 +5,7 @@ import Layout from "../layouts/Layout.astro";
 <Layout title="Welcome to Rocketship">
     <main class="container">
         <div class="stars"></div>
-        <div class="content">
+        <div class="hero-content">
             <div class="rocket">
                 <span class="rocket-icon">🚀</span>
             </div>
@@ -15,6 +15,14 @@ import Layout from "../layouts/Layout.astro";
                 <span class="dot"></span>
                 <span>Systems Up and Running</span>
             </div>
+        </div>
+        <div class="chess-section">
+            <div class="chess-header">
+                <h2>♟ Interactive Chess</h2>
+                <button id="resetBtn" class="reset-btn">New Game</button>
+            </div>
+            <div id="chessboard" class="chessboard"></div>
+            <div id="chessStatus" class="chess-status">White's turn</div>
         </div>
     </main>
 </Layout>
@@ -57,83 +65,339 @@ import Layout from "../layouts/Layout.astro";
         50% { opacity: 0.7; }
     }
 
-    .content {
+    .hero-content {
         text-align: center;
         z-index: 1;
         padding: 2rem;
     }
 
-    .rocket {
-        margin-bottom: 1.5rem;
-        animation: float 3s ease-in-out infinite;
-    }
-
-    .rocket-icon {
-        font-size: 5rem;
-        display: inline-block;
-        filter: drop-shadow(0 0 20px rgba(255, 107, 107, 0.5));
-    }
-
-    @keyframes float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-15px); }
-    }
-
-    h1 {
-        font-family: system-ui, -apple-system, sans-serif;
-        font-size: clamp(2.5rem, 8vw, 4rem);
-        font-weight: 800;
-        color: #fff;
-        margin: 0 0 1rem 0;
-        letter-spacing: -0.02em;
-    }
-
-    .gradient {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .tagline {
-        font-family: system-ui, -apple-system, sans-serif;
-        font-size: 1.25rem;
-        color: rgba(255, 255, 255, 0.7);
-        margin: 0 0 2rem 0;
-        font-weight: 400;
-    }
-
-    .status {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: rgba(255, 255, 255, 0.1);
-        padding: 0.75rem 1.5rem;
-        border-radius: 999px;
-        backdrop-filter: blur(10px);
+    .chess-section {
+        position: absolute;
+        right: 2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 10;
+        background: rgba(15, 15, 35, 0.9);
+        padding: 1.5rem;
         border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #4ade80;
+        border-radius: 1rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .chess-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        gap: 1rem;
+    }
+
+    .chess-header h2 {
+        color: #fff;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 1.1rem;
+        margin: 0;
+    }
+
+    .reset-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: #fff;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .reset-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .chessboard {
+        display: grid;
+        grid-template-columns: repeat(8, 45px);
+        grid-template-rows: repeat(8, 45px);
+        border: 3px solid #4a4a6a;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .square {
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        user-select: none;
+    }
+
+    .square.light {
+        background-color: #f0d9b5;
+    }
+
+    .square.dark {
+        background-color: #b58863;
+    }
+
+    .square.selected {
+        background-color: #7fc97f !important;
+        box-shadow: inset 0 0 0 3px #2d5a2d;
+    }
+
+    .square.valid-move {
+        position: relative;
+    }
+
+    .square.valid-move::after {
+        content: '';
+        position: absolute;
+        width: 15px;
+        height: 15px;
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .square.valid-capture::after {
+        width: 45px;
+        height: 45px;
+        background: transparent;
+        border: 4px solid rgba(0, 0, 0, 0.25);
+        border-radius: 50%;
+    }
+
+    .square:hover {
+        filter: brightness(1.1);
+    }
+
+    .piece {
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        line-height: 1;
+    }
+
+    .piece.white {
+        color: #fff;
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.8), 0 0 1px #000;
+    }
+
+    .piece.black {
+        color: #1a1a1a;
+    }
+
+    .chess-status {
+        margin-top: 1rem;
+        color: rgba(255, 255, 255, 0.8);
         font-family: system-ui, -apple-system, sans-serif;
         font-size: 0.9rem;
-        font-weight: 500;
-    }
-
-    .dot {
-        width: 8px;
-        height: 8px;
-        background: #4ade80;
-        border-radius: 50%;
-        animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-        0%, 100% {
-            opacity: 1;
-            box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4);
-        }
-        50% {
-            opacity: 0.8;
-            box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
-        }
+        text-align: center;
     }
 </style>
+
+<script>
+    const pieces = {
+        'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
+        'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙'
+    };
+
+    const initialBoard = [
+        ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+        ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+        ['', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', ''],
+        ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+        ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+    ];
+
+    let board = JSON.parse(JSON.stringify(initialBoard));
+    let selectedSquare = null;
+    let currentTurn = 'white';
+    let validMoves = [];
+
+    function isWhite(piece) {
+        return piece && piece === piece.toUpperCase();
+    }
+
+    function isBlack(piece) {
+        return piece && piece === piece.toLowerCase();
+    }
+
+    function getValidMoves(row, col) {
+        const piece = board[row][col];
+        if (!piece) return [];
+        
+        const moves = [];
+        const isPieceWhite = isWhite(piece);
+        const pieceType = piece.toLowerCase();
+
+        const addMove = (r, c) => {
+            if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                const target = board[r][c];
+                if (!target) {
+                    moves.push([r, c]);
+                } else if (isPieceWhite ? isBlack(target) : isWhite(target)) {
+                    moves.push([r, c]);
+                }
+            }
+        };
+
+        if (pieceType === 'p') {
+            const direction = isPieceWhite ? -1 : 1;
+            const startRow = isPieceWhite ? 6 : 1;
+            
+            if (row + direction >= 0 && row + direction < 8 && !board[row + direction][col]) {
+                moves.push([row + direction, col]);
+                if (row === startRow && !board[row + 2 * direction][col]) {
+                    moves.push([row + 2 * direction, col]);
+                }
+            }
+            
+            [-1, 1].forEach(dc => {
+                const c = col + dc;
+                if (c >= 0 && c < 8 && row + direction >= 0 && row + direction < 8) {
+                    const target = board[row + direction][c];
+                    if (target && (isPieceWhite ? isBlack(target) : isWhite(target))) {
+                        moves.push([row + direction, c]);
+                    }
+                }
+            });
+        }
+
+        if (pieceType === 'r' || pieceType === 'q') {
+            [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+                for (let i = 1; i < 8; i++) {
+                    const r = row + dr * i;
+                    const c = col + dc * i;
+                    if (r < 0 || r >= 8 || c < 0 || c >= 8) break;
+                    const target = board[r][c];
+                    if (!target) {
+                        moves.push([r, c]);
+                    } else {
+                        if (isPieceWhite ? isBlack(target) : isWhite(target)) {
+                            moves.push([r, c]);
+                        }
+                        break;
+                    }
+                }
+            });
+        }
+
+        if (pieceType === 'b' || pieceType === 'q') {
+            [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([dr, dc]) => {
+                for (let i = 1; i < 8; i++) {
+                    const r = row + dr * i;
+                    const c = col + dc * i;
+                    if (r < 0 || r >= 8 || c < 0 || c >= 8) break;
+                    const target = board[r][c];
+                    if (!target) {
+                        moves.push([r, c]);
+                    } else {
+                        if (isPieceWhite ? isBlack(target) : isWhite(target)) {
+                            moves.push([r, c]);
+                        }
+                        break;
+                    }
+                }
+            });
+        }
+
+        if (pieceType === 'n') {
+            [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]].forEach(([dr, dc]) => {
+                addMove(row + dr, col + dc);
+            });
+        }
+
+        if (pieceType === 'k') {
+            [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]].forEach(([dr, dc]) => {
+                addMove(row + dr, col + dc);
+            });
+        }
+
+        return moves;
+    }
+
+    function renderBoard() {
+        const chessboard = document.getElementById('chessboard');
+        chessboard.innerHTML = '';
+        
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const square = document.createElement('div');
+                const isLight = (row + col) % 2 === 0;
+                square.className = `square ${isLight ? 'light' : 'dark'}`;
+                square.dataset.row = row;
+                square.dataset.col = col;
+
+                const piece = board[row][col];
+                if (piece) {
+                    const pieceEl = document.createElement('span');
+                    pieceEl.className = `piece ${isWhite(piece) ? 'white' : 'black'}`;
+                    pieceEl.textContent = pieces[piece];
+                    square.appendChild(pieceEl);
+                }
+
+                if (selectedSquare && selectedSquare[0] === row && selectedSquare[1] === col) {
+                    square.classList.add('selected');
+                }
+
+                const isValid = validMoves.some(([r, c]) => r === row && c === col);
+                if (isValid) {
+                    square.classList.add('valid-move');
+                    if (piece) square.classList.add('valid-capture');
+                }
+
+                square.addEventListener('click', () => handleSquareClick(row, col));
+                chessboard.appendChild(square);
+            }
+        }
+    }
+
+    function handleSquareClick(row, col) {
+        const piece = board[row][col];
+        const isPieceWhite = piece && isWhite(piece);
+        const isPieceBlack = piece && isBlack(piece);
+        
+        if (selectedSquare) {
+            const isValidMove = validMoves.some(([r, c]) => r === row && c === col);
+            
+            if (isValidMove) {
+                board[row][col] = board[selectedSquare[0]][selectedSquare[1]];
+                board[selectedSquare[0]][selectedSquare[1]] = '';
+                currentTurn = currentTurn === 'white' ? 'black' : 'white';
+                document.getElementById('chessStatus').textContent = `${currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1)}'s turn`;
+                selectedSquare = null;
+                validMoves = [];
+                renderBoard();
+                return;
+            }
+        }
+
+        if ((currentTurn === 'white' && isPieceWhite) || (currentTurn === 'black' && isPieceBlack)) {
+            selectedSquare = [row, col];
+            validMoves = getValidMoves(row, col);
+        } else {
+            selectedSquare = null;
+            validMoves = [];
+        }
+        
+        renderBoard();
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+        board = JSON.parse(JSON.stringify(initialBoard));
+        selectedSquare = null;
+        currentTurn = 'white';
+        validMoves = [];
+        document.getElementById('chessStatus').textContent = "White's turn";
+        renderBoard();
+    });
+
+    renderBoard();
+</script>
