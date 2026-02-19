@@ -1,23 +1,227 @@
 ---
 import Layout from "../layouts/Layout.astro";
+
+const initialBoard = [
+    ['♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'],
+    ['♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'],
+    ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖'],
+];
 ---
 
 <Layout title="Welcome to Rocketship">
     <main class="container">
         <div class="stars"></div>
-        <div class="content">
-            <div class="rocket">
-                <span class="rocket-icon">🚀</span>
+        <div class="hero-content">
+            <div class="hero-text">
+                <div class="rocket">
+                    <span class="rocket-icon">🚀</span>
+                </div>
+                <h1>Welcome to <span class="gradient">Rocketship</span></h1>
+                <p class="tagline">Your deployment is flying through rock8 cloud !</p>
+                <div class="status">
+                    <span class="dot"></span>
+                    <span>Systems Up and Running</span>
+                </div>
             </div>
-            <h1>Welcome to <span class="gradient">Rocketship</span></h1>
-            <p class="tagline">Your deployment is flying through rock8 cloud !</p>
-            <div class="status">
-                <span class="dot"></span>
-                <span>Systems Up and Running</span>
+            <div class="chess-container">
+                <div class="chess-header">
+                    <span class="chess-icon">♟</span>
+                    <span>Chess Challenge</span>
+                </div>
+                <div class="chess-board" id="chessBoard"></div>
+                <div class="chess-controls">
+                    <button id="resetBtn">New Game</button>
+                    <span id="turnIndicator">White's Turn</span>
+                </div>
             </div>
         </div>
     </main>
 </Layout>
+
+<script>
+    const board = [
+        ['♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'],
+        ['♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'],
+        ['', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', ''],
+        ['♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'],
+        ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖'],
+    ];
+
+    const initialBoardState = JSON.parse(JSON.stringify(board));
+    let selectedSquare = null;
+    let isWhiteTurn = true;
+
+    const whitePieces = '♖♘♗♕♔♙';
+    const blackPieces = '♜♞♝♛♚♟';
+
+    function isPieceAt(row, col) {
+        return board[row][col] !== '';
+    }
+
+    function getPieceColor(piece) {
+        if (whitePieces.includes(piece)) return 'white';
+        if (blackPieces.includes(piece)) return 'black';
+        return null;
+    }
+
+    function isValidMove(fromRow, fromCol, toRow, toCol) {
+        const piece = board[fromRow][fromCol];
+        const target = board[toRow][toCol];
+        const pieceColor = getPieceColor(piece);
+        const targetColor = target ? getPieceColor(target) : null;
+
+        if (targetColor === pieceColor) return false;
+
+        const rowDiff = toRow - fromRow;
+        const colDiff = toCol - fromCol;
+        const absRowDiff = Math.abs(rowDiff);
+        const absColDiff = Math.abs(colDiff);
+
+        if (piece === '♙') {
+            if (targetColor === 'white') return false;
+            if (fromRow === 6 && rowDiff === -2 && !board[fromRow-1][fromCol] && !board[fromRow-2][fromCol]) return true;
+            if (rowDiff === -1 && !target && toCol === fromCol) return true;
+            if (Math.abs(colDiff) === 1 && rowDiff === -1 && targetColor === 'black') return true;
+            return false;
+        }
+
+        if (piece === '♟') {
+            if (targetColor === 'black') return false;
+            if (fromRow === 1 && rowDiff === 2 && !board[fromRow+1][fromCol] && !board[fromRow+2][fromCol]) return true;
+            if (rowDiff === 1 && !target && toCol === fromCol) return true;
+            if (Math.abs(colDiff) === 1 && rowDiff === 1 && targetColor === 'white') return true;
+            return false;
+        }
+
+        if (piece === '♖' || piece === '♜') {
+            if (absRowDiff !== 0 && absColDiff !== 0) return false;
+            const dRow = rowDiff === 0 ? 0 : rowDiff / absRowDiff;
+            const dCol = colDiff === 0 ? 0 : colDiff / absColDiff;
+            for (let r = fromRow + dRow, c = fromCol + dCol; r !== toRow || c !== toCol; r += dRow, c += dCol) {
+                if (board[r][c] !== '') return false;
+            }
+            return true;
+        }
+
+        if (piece === '♘' || piece === '♞') {
+            return (absRowDiff === 2 && absColDiff === 1) || (absRowDiff === 1 && absColDiff === 2);
+        }
+
+        if (piece === '♗' || piece === '♝') {
+            if (absRowDiff !== absColDiff) return false;
+            const dRow = rowDiff / absRowDiff;
+            const dCol = colDiff / absColDiff;
+            for (let r = fromRow + dRow, c = fromCol + dCol; r !== toRow; r += dRow, c += dCol) {
+                if (board[r][c] !== '') return false;
+            }
+            return true;
+        }
+
+        if (piece === '♕' || piece === '♛') {
+            if (absRowDiff !== 0 && absColDiff !== 0 && absRowDiff !== absColDiff) return false;
+            const dRow = rowDiff === 0 ? 0 : rowDiff / absRowDiff;
+            const dCol = colDiff === 0 ? 0 : colDiff / absColDiff;
+            for (let r = fromRow + dRow, c = fromCol + dCol; r !== toRow || c !== toCol; r += dRow, c += dCol) {
+                if (board[r][c] !== '') return false;
+            }
+            return true;
+        }
+
+        if (piece === '♔' || piece === '♚') {
+            return absRowDiff <= 1 && absColDiff <= 1;
+        }
+
+        return false;
+    }
+
+    function renderBoard() {
+        const boardEl = document.getElementById('chessBoard');
+        if (!boardEl) return;
+        boardEl.innerHTML = '';
+
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const square = document.createElement('div');
+                const isDark = (row + col) % 2 === 1;
+                square.className = `square ${isDark ? 'dark' : 'light'}`;
+                square.dataset.row = row;
+                square.dataset.col = col;
+
+                const piece = board[row][col];
+                if (piece) {
+                    const pieceEl = document.createElement('span');
+                    pieceEl.className = `piece ${getPieceColor(piece)}`;
+                    pieceEl.textContent = piece;
+                    square.appendChild(pieceEl);
+                }
+
+                if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
+                    square.classList.add('selected');
+                }
+
+                square.addEventListener('click', () => handleSquareClick(row, col));
+                boardEl.appendChild(square);
+            }
+        }
+    }
+
+    function handleSquareClick(row, col) {
+        const piece = board[row][col];
+        
+        if (selectedSquare) {
+            if (isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
+                board[row][col] = board[selectedSquare.row][selectedSquare.col];
+                board[selectedSquare.row][selectedSquare.col] = '';
+                isWhiteTurn = !isWhiteTurn;
+                updateTurnIndicator();
+                selectedSquare = null;
+                renderBoard();
+                return;
+            }
+            selectedSquare = null;
+        }
+
+        if (piece && ((isWhiteTurn && getPieceColor(piece) === 'white') || (!isWhiteTurn && getPieceColor(piece) === 'black'))) {
+            selectedSquare = { row, col };
+        }
+        renderBoard();
+    }
+
+    function updateTurnIndicator() {
+        const indicator = document.getElementById('turnIndicator');
+        if (indicator) {
+            indicator.textContent = isWhiteTurn ? "White's Turn" : "Black's Turn";
+        }
+    }
+
+    function resetGame() {
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                board[row][col] = initialBoardState[row][col];
+            }
+        }
+        isWhiteTurn = true;
+        selectedSquare = null;
+        updateTurnIndicator();
+        renderBoard();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderBoard();
+        const resetBtn = document.getElementById('resetBtn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', resetGame);
+        }
+    });
+</script>
 
 <style>
     .container {
@@ -57,13 +261,7 @@ import Layout from "../layouts/Layout.astro";
         50% { opacity: 0.7; }
     }
 
-    .content {
-        text-align: center;
-        z-index: 1;
-        padding: 2rem;
-    }
-
-    .rocket {
+    .hero-text {
         margin-bottom: 1.5rem;
         animation: float 3s ease-in-out infinite;
     }
@@ -134,6 +332,149 @@ import Layout from "../layouts/Layout.astro";
         50% {
             opacity: 0.8;
             box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
+        }
+    }
+
+    .hero-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4rem;
+        flex-wrap: wrap;
+        z-index: 1;
+        padding: 2rem;
+    }
+
+    .hero-text {
+        text-align: center;
+    }
+
+    .chess-container {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 1.5rem;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .chess-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        color: #fff;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .chess-icon {
+        font-size: 1.5rem;
+    }
+
+    .chess-board {
+        display: grid;
+        grid-template-columns: repeat(8, 45px);
+        grid-template-rows: repeat(8, 45px);
+        border: 3px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .square {
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .square.light {
+        background: rgba(240, 217, 181, 0.9);
+    }
+
+    .square.dark {
+        background: rgba(181, 136, 99, 0.9);
+    }
+
+    .square:hover {
+        box-shadow: inset 0 0 0 2px rgba(255, 215, 0, 0.5);
+    }
+
+    .square.selected {
+        box-shadow: inset 0 0 0 3px #ffd700;
+    }
+
+    .piece {
+        font-size: 2rem;
+        line-height: 1;
+        user-select: none;
+    }
+
+    .piece.white {
+        color: #fff;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    .piece.black {
+        color: #1a1a1a;
+        text-shadow: 0 1px 1px rgba(255,255,255,0.2);
+    }
+
+    .chess-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 1rem;
+        gap: 1rem;
+    }
+
+    .chess-controls button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .chess-controls button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    #turnIndicator {
+        color: rgba(255, 255, 255, 0.8);
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    @media (max-width: 900px) {
+        .hero-content {
+            flex-direction: column;
+            gap: 2rem;
+        }
+    }
+
+    @media (max-width: 500px) {
+        .chess-board {
+            grid-template-columns: repeat(8, 38px);
+            grid-template-rows: repeat(8, 38px);
+        }
+        .square {
+            width: 38px;
+            height: 38px;
+        }
+        .piece {
+            font-size: 1.6rem;
         }
     }
 </style>
