@@ -2,6 +2,13 @@
 
 A minimal Astro landing page for testing deployments.
 
+## Tech Stack
+
+- **Framework:** Astro 5.14.7
+- **Package Manager:** Bun
+- **Language:** TypeScript
+- **Container:** Docker
+
 ## Development
 
 ```bash
