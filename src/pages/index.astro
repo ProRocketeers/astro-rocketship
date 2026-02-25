@@ -1,5 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import ChessBoard from "../components/ChessBoard.astro";
 ---
 
 <Layout title="Welcome to Rocketship">
@@ -11,7 +12,10 @@ import Layout from "../layouts/Layout.astro";
             </div>
             <h1>Welcome to <span class="gradient">Rocketship</span></h1>
             <p class="tagline">Your deployment is flying through rock8 cloud !</p>
-            <div class="status">
+            
+            <ChessBoard />
+
+            <div class="status" style="margin-top: 2rem;">
                 <span class="dot"></span>
                 <span>Systems Up and Running</span>
             </div>
@@ -27,11 +31,11 @@ import Layout from "../layouts/Layout.astro";
         justify-content: center;
         background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0f0f23 100%);
         position: relative;
-        overflow: hidden;
+        overflow-y: auto;
     }
 
     .stars {
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         width: 100%;
