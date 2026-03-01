@@ -1,5 +1,16 @@
 ---
 import Layout from "../layouts/Layout.astro";
+
+const initialPosition = [
+    ['', '', '', '♕', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '♟', '♟', '♟'],
+    ['', '', '', '', '', '', '', '♚'],
+];
 ---
 
 <Layout title="Welcome to Rocketship">
@@ -24,7 +35,23 @@ import Layout from "../layouts/Layout.astro";
                         <span class="puzzle-title">♟ Mate in 1</span>
                         <span class="puzzle-hint">White to move</span>
                     </div>
-                    <div class="chess-board" id="board"></div>
+                    <div class="chess-board" id="board">
+                        {Array.from({ length: 8 }, (_, i) => {
+                            const row = 7 - i;
+                            return Array.from({ length: 8 }, (_, col) => {
+                                const piece = initialPosition[row][col];
+                                return (
+                                    <div 
+                                        class={`square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`}
+                                        data-row={row}
+                                        data-col={col}
+                                    >
+                                        {piece && <span class="piece">{piece}</span>}
+                                    </div>
+                                );
+                            });
+                        })}
+                    </div>
                     <button class="reset-btn" id="resetBtn">Reset Puzzle</button>
                 </div>
             </div>
@@ -391,7 +418,7 @@ import Layout from "../layouts/Layout.astro";
     }
 </style>
 
-<script define:vars={{}}>
+<script>
     const initialPosition = [
         ['', '', '', '♕', '', '', '', ''],
         ['', '', '', '', '', '', '', ''],
@@ -406,80 +433,13 @@ import Layout from "../layouts/Layout.astro";
     let board = JSON.parse(JSON.stringify(initialPosition));
     let selectedSquare = null;
     let gameOver = false;
-    let draggedPiece = null;
-    let draggedFrom = null;
 
-    function createBoard() {
-        const boardEl = document.getElementById('board');
-        if (!boardEl) return;
-        boardEl.innerHTML = '';
-        
-        for (let row = 7; row >= 0; row--) {
-            for (let col = 0; col < 8; col++) {
-                const square = document.createElement('div');
-                square.className = `square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
-                square.dataset.row = row;
-                square.dataset.col = col;
-                
-                if (board[row][col]) {
-                    const piece = document.createElement('span');
-                    piece.className = 'piece';
-                    piece.textContent = board[row][col];
-                    piece.draggable = true;
-                    
-                    piece.addEventListener('dragstart', (e) => {
-                        if (gameOver || board[row][col] !== '♕') {
-                            e.preventDefault();
-                            return;
-                        }
-                        draggedPiece = piece;
-                        draggedFrom = { row, col };
-                        piece.classList.add('dragging');
-                        selectedSquare = { row, col };
-                        updateBoard();
-                    });
-                    
-                    piece.addEventListener('dragend', () => {
-                        piece.classList.remove('dragging');
-                        draggedPiece = null;
-                        draggedFrom = null;
-                    });
-                    
-                    square.appendChild(piece);
-                }
-                
-                square.addEventListener('click', () => handleSquareClick(row, col));
-                
-                square.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    if (draggedFrom && isValidMove(draggedFrom.row, draggedFrom.col, row, col)) {
-                        square.classList.add('drag-over');
-                    }
-                });
-                
-                square.addEventListener('dragleave', () => {
-                    square.classList.remove('drag-over');
-                });
-                
-                square.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    square.classList.remove('drag-over');
-                    if (draggedFrom && isValidMove(draggedFrom.row, draggedFrom.col, row, col)) {
-                        makeMove(draggedFrom.row, draggedFrom.col, row, col);
-                        selectedSquare = null;
-                        draggedFrom = null;
-                        createBoard();
-                        
-                        if (isCheckmate(row, col)) {
-                            gameOver = true;
-                            setTimeout(() => showCheckmate(), 100);
-                        }
-                    }
-                });
-                
-                boardEl.appendChild(square);
-            }
-        }
+    function getBoardElement() {
+        return document.getElementById('board');
+    }
+
+    function getSquares() {
+        return document.querySelectorAll('.square');
     }
 
     function handleSquareClick(row, col) {
@@ -491,7 +451,7 @@ import Layout from "../layouts/Layout.astro";
             if (isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
                 makeMove(selectedSquare.row, selectedSquare.col, row, col);
                 selectedSquare = null;
-                createBoard();
+                renderBoard();
                 
                 if (isCheckmate(row, col)) {
                     gameOver = true;
@@ -499,14 +459,14 @@ import Layout from "../layouts/Layout.astro";
                 }
             } else if (piece === '♕') {
                 selectedSquare = { row, col };
-                updateBoard();
+                updateHighlights();
             } else {
                 selectedSquare = null;
-                updateBoard();
+                updateHighlights();
             }
         } else if (piece === '♕') {
             selectedSquare = { row, col };
-            updateBoard();
+            updateHighlights();
         }
     }
 
@@ -541,6 +501,104 @@ import Layout from "../layouts/Layout.astro";
     function makeMove(fromRow, fromCol, toRow, toCol) {
         board[toRow][toCol] = board[fromRow][fromCol];
         board[fromRow][fromCol] = '';
+    }
+
+    function renderBoard() {
+        const squares = getSquares();
+        squares.forEach((square) => {
+            const row = parseInt(square.getAttribute('data-row') || '0');
+            const col = parseInt(square.getAttribute('data-col') || '0');
+            
+            const piece = board[row][col];
+            const pieceEl = square.querySelector('.piece');
+            
+            if (piece && !pieceEl) {
+                const newPiece = document.createElement('span');
+                newPiece.className = 'piece';
+                newPiece.textContent = piece;
+                newPiece.draggable = piece === '♕';
+                square.appendChild(newPiece);
+                attachDragListeners(newPiece, row, col);
+            } else if (!piece && pieceEl) {
+                pieceEl.remove();
+            } else if (piece && pieceEl) {
+                pieceEl.textContent = piece;
+            }
+        });
+        attachSquareListeners();
+    }
+
+    function attachSquareListeners() {
+        const squares = getSquares();
+        squares.forEach((square) => {
+            const row = parseInt(square.getAttribute('data-row') || '0');
+            const col = parseInt(square.getAttribute('data-col') || '0');
+            
+            square.onclick = () => handleSquareClick(row, col);
+            
+            square.ondragover = (e) => {
+                e.preventDefault();
+                if (selectedSquare && isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
+                    square.classList.add('drag-over');
+                }
+            };
+            
+            square.ondragleave = () => {
+                square.classList.remove('drag-over');
+            };
+            
+            square.ondrop = (e) => {
+                e.preventDefault();
+                square.classList.remove('drag-over');
+                if (selectedSquare && isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
+                    makeMove(selectedSquare.row, selectedSquare.col, row, col);
+                    selectedSquare = null;
+                    renderBoard();
+                    
+                    if (isCheckmate(row, col)) {
+                        gameOver = true;
+                        setTimeout(() => showCheckmate(), 100);
+                    }
+                }
+            };
+        });
+    }
+
+    function attachDragListeners(pieceEl, row, col) {
+        if (board[row][col] !== '♕') return;
+        
+        pieceEl.draggable = true;
+        pieceEl.ondragstart = (e) => {
+            if (gameOver) {
+                e.preventDefault();
+                return;
+            }
+            pieceEl.classList.add('dragging');
+            selectedSquare = { row, col };
+            updateHighlights();
+        };
+        
+        pieceEl.ondragend = () => {
+            pieceEl.classList.remove('dragging');
+        };
+    }
+
+    function updateHighlights() {
+        const squares = getSquares();
+        squares.forEach((square) => {
+            const row = parseInt(square.getAttribute('data-row') || '0');
+            const col = parseInt(square.getAttribute('data-col') || '0');
+            
+            square.classList.remove('selected', 'valid-move', 'drag-over');
+            
+            if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
+                square.classList.add('selected');
+            }
+            
+            if (selectedSquare && isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
+                square.classList.add('valid-move');
+            }
+        });
     }
 
     function isCheckmate(queenRow, queenCol) {
@@ -614,31 +672,13 @@ import Layout from "../layouts/Layout.astro";
         return true;
     }
 
-    function updateBoard() {
-        const squares = document.querySelectorAll('.square');
-        squares.forEach((square) => {
-            const row = parseInt(square.getAttribute('data-row') || '0');
-            const col = parseInt(square.getAttribute('data-col') || '0');
-            
-            square.classList.remove('selected', 'valid-move', 'drag-over');
-            
-            if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
-                square.classList.add('selected');
-            }
-            
-            if (selectedSquare && isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
-                square.classList.add('valid-move');
-            }
-        });
-    }
-
     function showCheckmate() {
         const overlay = document.getElementById('checkmateOverlay');
         if (overlay) {
             overlay.classList.add('show');
         }
 
-        const squares = document.querySelectorAll('.square');
+        const squares = getSquares();
         squares.forEach((square) => {
             const row = parseInt(square.getAttribute('data-row') || '0');
             const col = parseInt(square.getAttribute('data-col') || '0');
@@ -659,11 +699,24 @@ import Layout from "../layouts/Layout.astro";
             overlay.classList.remove('show');
         }
         
-        createBoard();
+        const squares = getSquares();
+        squares.forEach((square) => {
+            square.classList.remove('checkmate-square');
+        });
+        
+        renderBoard();
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        createBoard();
+        attachSquareListeners();
+        
+        const pieces = document.querySelectorAll('.piece');
+        pieces.forEach((piece) => {
+            const square = piece.parentElement;
+            const row = parseInt(square?.getAttribute('data-row') || '0');
+            const col = parseInt(square?.getAttribute('data-col') || '0');
+            attachDragListeners(piece, row, col);
+        });
         
         const resetBtn = document.getElementById('resetBtn');
         if (resetBtn) {
