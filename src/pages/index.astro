@@ -219,6 +219,7 @@ import Layout from "../layouts/Layout.astro";
         cursor: pointer;
         transition: all 0.15s ease;
         user-select: none;
+        position: relative;
     }
 
     .square.light {
@@ -238,12 +239,34 @@ import Layout from "../layouts/Layout.astro";
         background: rgba(74, 222, 128, 0.4) !important;
     }
 
+    .square.valid-move:hover {
+        background: rgba(74, 222, 128, 0.6) !important;
+    }
+
     .square:hover {
         filter: brightness(1.1);
     }
 
+    .square.drag-over {
+        background: rgba(102, 126, 234, 0.5) !important;
+    }
+
     .square.checkmate-square {
         animation: checkmateFlash 0.5s ease-in-out 3;
+    }
+
+    .piece {
+        cursor: grab;
+        transition: transform 0.1s ease;
+    }
+
+    .piece:active {
+        cursor: grabbing;
+    }
+
+    .piece.dragging {
+        opacity: 0.5;
+        transform: scale(1.2);
     }
 
     @keyframes checkmateFlash {
@@ -350,22 +373,7 @@ import Layout from "../layouts/Layout.astro";
     }
 </style>
 
-<script>
-    const PIECES = {
-        WHITE_KING: '♔',
-        WHITE_QUEEN: '♕',
-        WHITE_ROOK: '♖',
-        WHITE_BISHOP: '♗',
-        WHITE_KNIGHT: '♘',
-        WHITE_PAWN: '♙',
-        BLACK_KING: '♚',
-        BLACK_QUEEN: '♛',
-        BLACK_ROOK: '♜',
-        BLACK_BISHOP: '♝',
-        BLACK_KNIGHT: '♞',
-        BLACK_PAWN: '♟'
-    };
-
+<script define:vars={{}}>
     const initialPosition = [
         ['', '', '', '♕', '', '', '', ''],
         ['', '', '', '', '', '', '', ''],
@@ -380,6 +388,8 @@ import Layout from "../layouts/Layout.astro";
     let board = JSON.parse(JSON.stringify(initialPosition));
     let selectedSquare = null;
     let gameOver = false;
+    let draggedPiece = null;
+    let draggedFrom = null;
 
     function createBoard() {
         const boardEl = document.getElementById('board');
@@ -392,14 +402,69 @@ import Layout from "../layouts/Layout.astro";
                 square.className = `square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
                 square.dataset.row = row;
                 square.dataset.col = col;
-                square.textContent = board[row][col];
+                
+                if (board[row][col]) {
+                    const piece = document.createElement('span');
+                    piece.className = 'piece';
+                    piece.textContent = board[row][col];
+                    piece.draggable = true;
+                    
+                    piece.addEventListener('dragstart', (e) => {
+                        if (gameOver || board[row][col] !== '♕') {
+                            e.preventDefault();
+                            return;
+                        }
+                        draggedPiece = piece;
+                        draggedFrom = { row, col };
+                        piece.classList.add('dragging');
+                        selectedSquare = { row, col };
+                        updateBoard();
+                    });
+                    
+                    piece.addEventListener('dragend', () => {
+                        piece.classList.remove('dragging');
+                        draggedPiece = null;
+                        draggedFrom = null;
+                    });
+                    
+                    square.appendChild(piece);
+                }
+                
                 square.addEventListener('click', () => handleSquareClick(row, col));
+                
+                square.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (draggedFrom && isValidMove(draggedFrom.row, draggedFrom.col, row, col)) {
+                        square.classList.add('drag-over');
+                    }
+                });
+                
+                square.addEventListener('dragleave', () => {
+                    square.classList.remove('drag-over');
+                });
+                
+                square.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    square.classList.remove('drag-over');
+                    if (draggedFrom && isValidMove(draggedFrom.row, draggedFrom.col, row, col)) {
+                        makeMove(draggedFrom.row, draggedFrom.col, row, col);
+                        selectedSquare = null;
+                        draggedFrom = null;
+                        createBoard();
+                        
+                        if (isCheckmate(row, col)) {
+                            gameOver = true;
+                            setTimeout(() => showCheckmate(), 100);
+                        }
+                    }
+                });
+                
                 boardEl.appendChild(square);
             }
         }
     }
 
-    function handleSquareClick(row: number, col: number) {
+    function handleSquareClick(row, col) {
         if (gameOver) return;
 
         const piece = board[row][col];
@@ -408,11 +473,11 @@ import Layout from "../layouts/Layout.astro";
             if (isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
                 makeMove(selectedSquare.row, selectedSquare.col, row, col);
                 selectedSquare = null;
-                updateBoard();
+                createBoard();
                 
                 if (isCheckmate(row, col)) {
                     gameOver = true;
-                    showCheckmate(row, col);
+                    setTimeout(() => showCheckmate(), 100);
                 }
             } else if (piece === '♕') {
                 selectedSquare = { row, col };
@@ -427,7 +492,7 @@ import Layout from "../layouts/Layout.astro";
         }
     }
 
-    function isValidMove(fromRow: number, fromCol: number, toRow: number, toCol: number): boolean {
+    function isValidMove(fromRow, fromCol, toRow, toCol) {
         const piece = board[fromRow][fromCol];
         if (piece !== '♕') return false;
 
@@ -455,12 +520,12 @@ import Layout from "../layouts/Layout.astro";
         return true;
     }
 
-    function makeMove(fromRow: number, fromCol: number, toRow: number, toCol: number): void {
+    function makeMove(fromRow, fromCol, toRow, toCol) {
         board[toRow][toCol] = board[fromRow][fromCol];
         board[fromRow][fromCol] = '';
     }
 
-    function isCheckmate(queenRow: number, queenCol: number): boolean {
+    function isCheckmate(queenRow, queenCol) {
         const kingPos = findKing();
         if (!kingPos) return false;
 
@@ -491,7 +556,7 @@ import Layout from "../layouts/Layout.astro";
         return true;
     }
 
-    function findKing(): { row: number; col: number } | null {
+    function findKing() {
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
                 if (board[row][col] === '♚') {
@@ -502,14 +567,14 @@ import Layout from "../layouts/Layout.astro";
         return null;
     }
 
-    function isKingInCheck(queenRow: number, queenCol: number): boolean {
+    function isKingInCheck(queenRow, queenCol) {
         const kingPos = findKing();
         if (!kingPos) return false;
         
         return isSquareAttacked(kingPos.row, kingPos.col, queenRow, queenCol);
     }
 
-    function isSquareAttacked(targetRow: number, targetCol: number, queenRow: number, queenCol: number): boolean {
+    function isSquareAttacked(targetRow, targetCol, queenRow, queenCol) {
         const rowDiff = targetRow - queenRow;
         const colDiff = targetCol - queenCol;
 
@@ -531,14 +596,13 @@ import Layout from "../layouts/Layout.astro";
         return true;
     }
 
-    function updateBoard(): void {
+    function updateBoard() {
         const squares = document.querySelectorAll('.square');
         squares.forEach((square) => {
             const row = parseInt(square.getAttribute('data-row') || '0');
             const col = parseInt(square.getAttribute('data-col') || '0');
             
-            square.classList.remove('selected', 'valid-move');
-            square.textContent = board[row][col];
+            square.classList.remove('selected', 'valid-move', 'drag-over');
             
             if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
                 square.classList.add('selected');
@@ -550,7 +614,7 @@ import Layout from "../layouts/Layout.astro";
         });
     }
 
-    function showCheckmate(queenRow: number, queenCol: number): void {
+    function showCheckmate() {
         const overlay = document.getElementById('checkmateOverlay');
         if (overlay) {
             overlay.classList.add('show');
@@ -567,7 +631,7 @@ import Layout from "../layouts/Layout.astro";
         });
     }
 
-    function resetPuzzle(): void {
+    function resetPuzzle() {
         board = JSON.parse(JSON.stringify(initialPosition));
         selectedSquare = null;
         gameOver = false;
