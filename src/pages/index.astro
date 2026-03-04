@@ -15,9 +15,134 @@ import Layout from "../layouts/Layout.astro";
                 <span class="dot"></span>
                 <span>Systems Up and Running</span>
             </div>
+            <div class="chess-section">
+                <h2>Mate in One</h2>
+                <p class="puzzle-hint" id="puzzle-hint">White to move</p>
+                <div class="board-container">
+                    <div class="board" id="board"></div>
+                </div>
+                <div class="puzzle-controls">
+                    <button class="btn" id="new-puzzle">New Puzzle</button>
+                    <p class="result" id="result"></p>
+                </div>
+            </div>
         </div>
     </main>
 </Layout>
+
+<script>
+    const PIECES = {
+        'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+        'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
+    };
+
+    const PUZZLES = [
+        { board: ['rnbqkb1r','pppp1ppp','5n2','4p2Q','2B1P3','8','PPPP1PPP','RNB1K1NR'], solution: {from: 'h5', to: 'f7'} },
+        { board: ['r1bqkb1r','pppp1ppp','2n2n2','4p2Q','2B1P3','8','PPPP1PPP','RNB1K1NR'], solution: {from: 'h5', to: 'f7'} },
+        { board: ['rnb1kbnr','pppp1ppp','8','4p3','6Pq','5P2','PPPP2PP','RNBQKBNR'], solution: {from: 'h4', to: 'e1'} },
+        { board: ['rnbqkbnr','ppppp2p','6p1','5p2','4P3','8','PPPP1PPP','RNBQKBNR'], solution: {from: 'd1', to: 'h5'} },
+        { board: ['rnbqk1nr','ppppp1pp','8','4Np2','2B1P3','8','PPPP1PPP','RNBQK2R'], solution: {from: 'e5', to: 'f7'} },
+        { board: ['1k6','8','1K6','8','8','8','8','7R'], solution: {from: 'h1', to: 'h8'} },
+        { board: ['6k1','5ppp','8','8','8','8','5PPP','4R1K1'], solution: {from: 'e1', to: 'e8'} },
+        { board: ['r1bqk2r','pppp1ppp','2n2n2','2b1p3','2B1P3','5N2','PPPP1PPP','RNBQK2R'], solution: {from: 'f3', to: 'g5'} },
+        { board: ['rnb1kbnr','pppp1ppp','4p3','8','6Pq','5P2','PPPPP2P','RNBQKBNR'], solution: {from: 'h4', to: 'e1'} },
+        { board: ['r1bk3r','ppppqppp','2n5','4N3','2B1P1b1','8','PPPP1PPP','RNBQK2R'], solution: {from: 'e5', to: 'f7'} },
+    ];
+
+    let currentPuzzle = null;
+    let selectedSquare = null;
+
+    function init() {
+        loadRandomPuzzle();
+        document.getElementById('new-puzzle').addEventListener('click', loadRandomPuzzle);
+    }
+
+    function loadRandomPuzzle() {
+        currentPuzzle = PUZZLES[Math.floor(Math.random() * PUZZLES.length)];
+        selectedSquare = null;
+        document.getElementById('result').textContent = '';
+        document.getElementById('result').className = 'result';
+        renderBoard();
+    }
+
+    function renderBoard() {
+        const board = document.getElementById('board');
+        board.innerHTML = '';
+        
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const square = document.createElement('div');
+                const isLight = (row + col) % 2 === 0;
+                square.className = `square ${isLight ? 'light' : 'dark'}`;
+                square.dataset.row = row;
+                square.dataset.col = col;
+                
+                const piece = currentPuzzle.board[row][col];
+                if (piece && piece !== 'x' && piece !== ' ') {
+                    square.textContent = PIECES[piece] || '';
+                    square.classList.add('piece');
+                }
+                
+                square.addEventListener('click', () => handleSquareClick(row, col));
+                board.appendChild(square);
+            }
+        }
+    }
+
+    function handleSquareClick(row, col) {
+        const squareNotation = String.fromCharCode(97 + col) + (8 - row);
+        const resultEl = document.getElementById('result');
+        
+        if (resultEl.textContent) return;
+        
+        if (!selectedSquare) {
+            const piece = currentPuzzle.board[row][col];
+            if (piece && piece === piece.toUpperCase()) {
+                selectedSquare = squareNotation;
+                highlightSquares(row, col);
+            }
+        } else {
+            if (selectedSquare === squareNotation) {
+                selectedSquare = null;
+                renderBoard();
+            } else if (selectedSquare === currentPuzzle.solution.from && squareNotation === currentPuzzle.solution.to) {
+                showSuccess();
+            } else {
+                resultEl.textContent = 'Try again!';
+                resultEl.classList.add('wrong');
+                selectedSquare = null;
+            }
+        }
+    }
+
+    function highlightSquares(row, col) {
+        const squares = document.querySelectorAll('.square');
+        squares.forEach(sq => {
+            if (parseInt(sq.dataset.row) === row && parseInt(sq.dataset.col) === col) {
+                sq.classList.add('selected');
+            }
+        });
+    }
+
+    function showSuccess() {
+        const resultEl = document.getElementById('result');
+        resultEl.textContent = 'Correct!';
+        resultEl.classList.add('correct');
+        
+        const toRow = 8 - parseInt(currentPuzzle.solution.to[1]);
+        const toCol = currentPuzzle.solution.to.charCodeAt(0) - 97;
+        const squares = document.querySelectorAll('.square');
+        
+        squares.forEach(sq => {
+            sq.classList.remove('selected');
+            if (parseInt(sq.dataset.row) === toRow && parseInt(sq.dataset.col) === toCol) {
+                sq.classList.add('correct-square');
+            }
+        });
+    }
+
+    init();
+</script>
 
 <style>
     .container {
@@ -135,5 +260,120 @@ import Layout from "../layouts/Layout.astro";
             opacity: 0.8;
             box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
         }
+    }
+
+    .chess-section {
+        margin-top: 2.5rem;
+        text-align: center;
+    }
+
+    .chess-section h2 {
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 1.5rem;
+        color: #fff;
+        margin-bottom: 0.5rem;
+    }
+
+    .puzzle-hint {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .board-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+
+    .board {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        width: min(400px, 90vw);
+        aspect-ratio: 1;
+        border: 3px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 0 30px rgba(102, 126, 234, 0.3);
+    }
+
+    .square {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(1.5rem, 5vw, 2.5rem);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .square.light {
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .square.dark {
+        background: rgba(102, 126, 234, 0.3);
+    }
+
+    .square.piece {
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    }
+
+    .square:hover {
+        background: rgba(102, 126, 234, 0.5);
+    }
+
+    .square.selected {
+        background: rgba(74, 222, 128, 0.5) !important;
+    }
+
+    .square.correct-square {
+        background: rgba(74, 222, 128, 0.6) !important;
+        animation: glow 1s ease-in-out infinite;
+    }
+
+    @keyframes glow {
+        0%, 100% { box-shadow: inset 0 0 20px rgba(74, 222, 128, 0.5); }
+        50% { box-shadow: inset 0 0 30px rgba(74, 222, 128, 0.8); }
+    }
+
+    .puzzle-controls {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 999px;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .result {
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        min-height: 1.5rem;
+    }
+
+    .result.correct {
+        color: #4ade80;
+    }
+
+    .result.wrong {
+        color: #f87171;
     }
 </style>
